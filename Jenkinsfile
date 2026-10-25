@@ -20,7 +20,21 @@ pipeline {
             }
         }
 
-        // >>> AQUÍ agregarás la etapa SAST (paso 5 de la guía) y, justo debajo, la de SonarQube (paso 6)
+        stage('SAST - Bandit') {
+            steps {
+                sh '''
+                    mkdir -p reports
+                    docker run --rm --volumes-from jenkins -w "$WORKSPACE" python:3.12-slim sh -c '
+                        pip install -q bandit
+                        bandit -r app.py -f txt -o reports/bandit.txt || true
+                        cat reports/bandit.txt
+                        bandit -r app.py -lll -q > /dev/null
+                    '
+                '''
+            }
+        }
+
+        // >>> AQUÍ agregarás la etapa de SonarQube (paso 6)
 
         stage('Deploy') {
             steps {
