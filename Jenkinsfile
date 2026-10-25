@@ -66,26 +66,18 @@ pipeline {
             }
         }
 
-        stage('SCA - Dependency-Check') {
+        stage('SCA - pip-audit') {
             steps {
-                withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
-                    sh '''
-                        mkdir -p reports
-                        RC=0
-                        docker rm -f dc-${BUILD_NUMBER} || true
-                        docker run --name dc-${BUILD_NUMBER} --user root \
-                            --volumes-from jenkins \
-                            -v dc-data:/usr/share/dependency-check/data \
-                            owasp/dependency-check:latest \
-                            --scan "$WORKSPACE/requirements.txt" --enableExperimental \
-                            --project hello-devsecops --format HTML --format JSON \
-                            --out /tmp/dc-report --failOnCVSS 7 \
-                            --nvdApiKey "$NVD_API_KEY" || RC=$?
-                        docker cp dc-${BUILD_NUMBER}:/tmp/dc-report/. reports/ || true
-                        docker rm dc-${BUILD_NUMBER}
+                sh '''
+                    mkdir -p reports
+                    docker run --rm --volumes-from jenkins -w "$WORKSPACE" python:3.12-slim sh -c '
+                        pip install -q pip-audit
+                        pip-audit -r requirements.txt --no-deps --disable-pip > reports/pip-audit.txt 2>&1
+                        RC=$?
+                        cat reports/pip-audit.txt
                         exit $RC
-                    '''
-                }
+                    '
+                '''
             }
         }
 
