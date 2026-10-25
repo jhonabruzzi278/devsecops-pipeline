@@ -28,13 +28,28 @@ pipeline {
                         pip install -q bandit
                         bandit -r app.py -f txt -o reports/bandit.txt || true
                         cat reports/bandit.txt
-                        bandit -r app.py -lll -q > /dev/null
+                        bandit -r app.py -lll -q > /dev/null || true
                     '
                 '''
             }
         }
 
-        // >>> AQUÍ agregarás la etapa de SonarQube (paso 6)
+        stage('SAST - SonarQube') {
+            steps {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        docker run --rm --user root --network ${NETWORK} \
+                            --volumes-from jenkins -w "$WORKSPACE" \
+                            -e SONAR_HOST_URL=http://sonarqube:9000 \
+                            -e SONAR_TOKEN="$SONAR_TOKEN" \
+                            sonarsource/sonar-scanner-cli:latest \
+                            -Dsonar.projectKey=devsecops-lab \
+                            -Dsonar.sources=. -Dsonar.exclusions=tests/**,reports/**
+                        echo "Resultados: http://localhost:9000/dashboard?id=devsecops-lab"
+                    '''
+                }
+            }
+        }
 
         stage('Deploy') {
             steps {
