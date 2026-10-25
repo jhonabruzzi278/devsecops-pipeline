@@ -28,7 +28,7 @@ pipeline {
                         pip install -q bandit
                         bandit -r app.py -f txt -o reports/bandit.txt || true
                         cat reports/bandit.txt
-                        bandit -r app.py -lll -q > /dev/null || true
+                        bandit -r app.py -lll -q > /dev/null
                     '
                 '''
             }
