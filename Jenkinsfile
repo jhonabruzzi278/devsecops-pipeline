@@ -66,7 +66,28 @@ pipeline {
             }
         }
 
-        // >>> AQUÍ agregarás la etapa SCA (paso 7)
+        stage('SCA - Dependency-Check') {
+            steps {
+                withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                    sh '''
+                        mkdir -p reports
+                        RC=0
+                        docker rm -f dc-${BUILD_NUMBER} || true
+                        docker run --name dc-${BUILD_NUMBER} --user root \
+                            --volumes-from jenkins \
+                            -v dc-data:/usr/share/dependency-check/data \
+                            owasp/dependency-check:latest \
+                            --scan "$WORKSPACE/requirements.txt" --enableExperimental \
+                            --project hello-devsecops --format HTML --format JSON \
+                            --out /tmp/dc-report --failOnCVSS 7 \
+                            --nvdApiKey "$NVD_API_KEY" || RC=$?
+                        docker cp dc-${BUILD_NUMBER}:/tmp/dc-report/. reports/ || true
+                        docker rm dc-${BUILD_NUMBER}
+                        exit $RC
+                    '''
+                }
+            }
+        }
 
         stage('DAST - OWASP ZAP') {
             steps {
