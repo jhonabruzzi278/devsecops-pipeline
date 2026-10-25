@@ -66,7 +66,25 @@ pipeline {
             }
         }
 
-        // >>> AQUÍ agregarás la etapa SCA (paso 7) y la etapa DAST (paso 8)
+        // >>> AQUÍ agregarás la etapa SCA (paso 7)
+
+        stage('DAST - OWASP ZAP') {
+            steps {
+                sh '''
+                    mkdir -p reports
+                    RC=0
+                    docker rm -f zap-${BUILD_NUMBER} || true
+                    docker run --name zap-${BUILD_NUMBER} --user root --network ${NETWORK} \
+                        -v zap-wrk-${BUILD_NUMBER}:/zap/wrk \
+                        ghcr.io/zaproxy/zaproxy:stable \
+                        zap-baseline.py -t http://${APP_NAME}:5000/ -r zap_report.html -J zap_report.json || RC=$?
+                    docker cp zap-${BUILD_NUMBER}:/zap/wrk/. reports/ || true
+                    docker rm zap-${BUILD_NUMBER}
+                    docker volume rm zap-wrk-${BUILD_NUMBER} || true
+                    echo "ZAP terminó con código $RC (0 = sin alertas, 1 = fallos, 2 = advertencias). Esta etapa informa, no bloquea."
+                '''
+            }
+        }
     }
 
     post {
