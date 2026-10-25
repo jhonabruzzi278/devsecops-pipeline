@@ -1,0 +1,6 @@
+.git
+jenkins
+reports
+__pycache__
+*.db
+.venv
